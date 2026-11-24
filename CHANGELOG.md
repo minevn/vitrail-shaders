@@ -11,6 +11,16 @@ publishing a jar named after one thing and built from another.
 Everything is a pre-release while the version stays under `1.0.0`. Nothing here is a promise about
 what the next one holds.
 
+## Unreleased
+
+### Fixed
+
+- **A server's HUD drawn in text shows under a shader pack.** Some servers draw a minimap or other
+  HUD out of text, with a resource pack that rewrites the game's text shader to move it onto the
+  screen. Faded text of that kind went to the shader pack, which drew it in the world instead, so
+  the HUD showed for half a second while the pack compiled and then vanished. Text whose shader a
+  resource pack replaces is now left to the game, as it already was at full opacity.
+
 ## 0.13.0-beta
 
 ### Added

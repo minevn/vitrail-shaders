@@ -28,9 +28,13 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormatElement;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.rendertype.PreparedRenderType;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.VanillaPackResources;
+import net.minecraft.server.packs.resources.ResourceManager;
 
 import org.joml.Matrix4fc;
 
@@ -779,6 +783,62 @@ public final class EntityDraw extends FamilyDraw {
 			RenderPipelines.TEXT_GRAYSCALE,
 			RenderPipelines.TEXT_GRAYSCALE_POLYGON_OFFSET,
 			RenderPipelines.TEXT_GRAYSCALE_SEE_THROUGH);
+
+	/**
+	 * The text pipelines whose vertex or fragment shader a resource pack replaces, which the game
+	 * keeps for itself rather than hand to the pack.
+	 * <p>
+	 * <strong>A resource pack that rewrites the text shader is drawing something that is not
+	 * text.</strong> Servers lay whole HUDs out of glyphs this way: the vertex shader reads a glyph's
+	 * colour and position as data and moves the quad to a corner of the screen. The pack's
+	 * {@code gbuffers_entities_translucent} reads the same quad as a glyph in the world, so the HUD is
+	 * drawn where the entity stands, which for such a carrier is nowhere the camera looks. Only the
+	 * translucent half was ever at stake: a glyph at full opacity with no box behind it is drawn
+	 * among the solid features ({@code SubmitNodeCollection.canRenderAsSolid}), where no text row is
+	 * served, so the same HUD at full opacity was already the game's.
+	 * <p>
+	 * Read again at the head of every level frame by {@link #readTextOverrides}, because a resource
+	 * pack can be turned on or off without the shader pack being read again.
+	 */
+	private static volatile Set<RenderPipeline> textOverrides = Set.of();
+
+	/**
+	 * Asks the resource manager, once per level frame, which text pipelines a resource pack replaces
+	 * the shaders of, and says so in the log when that set changes.
+	 */
+	public static void readTextOverrides() {
+		ResourceManager resources = Minecraft.getInstance().getResourceManager();
+		Set<RenderPipeline> replaced = new LinkedHashSet<>();
+		for (RenderPipeline pipeline : TEXT_FORMATS.keySet()) {
+			if (replacedByResourcePack(resources, GraphicsApi.vertexShader(pipeline), "vsh")
+					|| replacedByResourcePack(resources, GraphicsApi.fragmentShader(pipeline), "fsh")) {
+				replaced.add(pipeline);
+			}
+		}
+
+		if (replaced.equals(textOverrides)) {
+			return;
+		}
+
+		textOverrides = Set.copyOf(replaced);
+		if (replaced.isEmpty()) {
+			Vitrail.logger().info("No resource pack replaces the text shaders now, so a pack draws the "
+					+ "text again");
+		} else {
+			Vitrail.logger().info("A resource pack replaces the shaders of {}, so the game keeps its own "
+					+ "draw of that text and no pack serves it", replaced.stream()
+					.map(pipeline -> pipeline.getLocation().toString()).toList());
+		}
+	}
+
+	private static boolean replacedByResourcePack(ResourceManager resources, Identifier shader,
+			String extension) {
+		Identifier location = shader.withPath(path -> "shaders/" + path + "." + extension);
+
+		return resources.getResource(location)
+				.map(resource -> !(resource.source() instanceof VanillaPackResources))
+				.orElse(false);
+	}
 
 	/**
 	 * The pipelines Iris assigns a program to OUTRIGHT rather than through one of the three
@@ -1906,6 +1966,12 @@ public final class EntityDraw extends FamilyDraw {
 
 		GpuDevice device = RenderSystem.tryGetDevice();
 		Element element = element(prepared.pipeline());
+		// Text whose shader a resource pack replaces stays the game's, see textOverrides.
+		if (element != null && element.text() && textOverrides.contains(prepared.pipeline())) {
+			draw.end();
+
+			return false;
+		}
 		// Two families and two conditions, because they are served at different moments. The
 		// entities live inside the two windows the level's features are drawn in; the hand is
 		// submitted by this engine itself, twice, and both of those moments fall outside the

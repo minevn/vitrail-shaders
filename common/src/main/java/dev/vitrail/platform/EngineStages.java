@@ -165,6 +165,9 @@ public final class EngineStages {
 		// mob first comes on screen.
 		PbrTextures.load();
 
+		// Which text a resource pack has rewritten the shader of, asked before any entity is drawn.
+		EntityDraw.readTextOverrides();
+
 		// The begins ahead of the shadow stage and the prepares behind it, which is the order
 		// OptiFine runs them in and the order Iris keeps: its begins are the head of the level render
 		// (pipeline/IrisRenderingPipeline.java:1014, from mixin/MixinLevelRenderer.java:123), its

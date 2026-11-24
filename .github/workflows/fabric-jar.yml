@@ -1,0 +1,41 @@
+# Builds the Fabric jar for every game on a dev/* branch and keeps it as a run artifact, so a
+# branch can be tried in game without building it locally.
+
+name: fabric-jar
+
+on:
+  push:
+    branches: ['dev/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fabric-jar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Jar names carry the game, so both builds sit side by side in fabric/build/libs.
+      - run: ./gradlew :fabric:build
+
+      - run: ./gradlew :fabric:build -Pminecraft=26.3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitrail-fabric
+          path: fabric/build/libs/*.jar
+          if-no-files-found: error

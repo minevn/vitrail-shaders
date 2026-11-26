@@ -6,6 +6,7 @@ import dev.vitrail.HostReport;
 import dev.vitrail.render.EntityDraw;
 import dev.vitrail.render.GraphicsApi;
 import dev.vitrail.render.HandDraw;
+import dev.vitrail.render.HeldText;
 import dev.vitrail.render.PackChain;
 import dev.vitrail.render.PackChoice;
 import dev.vitrail.render.pbr.PbrAtlases;
@@ -165,7 +166,9 @@ public final class EngineStages {
 		// mob first comes on screen.
 		PbrTextures.load();
 
-		// Which text a resource pack has rewritten the shader of, asked before any entity is drawn.
+		// Which text a resource pack has rewritten the shader of, asked before any entity is drawn,
+		// and nothing held of it from a frame that did not reach the end of its level.
+		HeldText.clear();
 		EntityDraw.readTextOverrides();
 
 		// The begins ahead of the shadow stage and the prepares behind it, which is the order
@@ -320,6 +323,10 @@ public final class EngineStages {
 		// and again on the settings screen through PackChoice.lastError.
 		PackChain.draw();
 
+		// Over what the chain's final wrote, and nowhere earlier: the text a resource pack rewrote
+		// the shader of is a HUD, and any stage of the chain that saw it would light, fog or smear it.
+		HeldText.draw();
+
 		// After the chain and not before: the composites above read the map the previous frame
 		// drew, and this draws the next frame's over it. The end of the frame is the whole
 		// culling design, see ShadowTerrain.
@@ -332,6 +339,7 @@ public final class EngineStages {
 	 * may be handed back, and the only one the player reaches twenty times a session.
 	 */
 	public static void leaveWorld() {
+		HeldText.clear();
 		PackChain.leaveWorld();
 	}
 

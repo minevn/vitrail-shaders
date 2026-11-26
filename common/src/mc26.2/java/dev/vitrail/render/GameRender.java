@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -114,6 +115,19 @@ public final class GameRender {
 	public static void renderAllFeatures(FeatureRenderDispatcher dispatcher,
 			SubmitNodeStorage submits, Supplier<String> label) {
 		dispatcher.renderAllFeatures(submits);
+	}
+
+	/**
+	 * Draws what {@link HeldText} held, in order, each exactly as the game draws it on this game:
+	 * a pass of its own, opened by the draw on the target its render type names, which is the main
+	 * target by now, the feature layer's override having been taken down when the layer was
+	 * composed. So there is no pass to open here and the label is not used.
+	 */
+	static void drawHeld(List<HeldText.Held> held, Supplier<String> label) {
+		for (HeldText.Held draw : held) {
+			draw.pose();
+			draw.prepared().drawFromBuffer(draw.info());
+		}
 	}
 
 	/**

@@ -31,6 +31,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.function.Supplier;
@@ -195,6 +196,49 @@ public final class GameRender {
 								OptionalDouble.empty()))) {
 			RenderSystem.bindDefaultUniforms(pass);
 			FeatureRenderDispatcher.renderAllFeatures(pass, frame);
+		}
+	}
+
+	/**
+	 * Draws what {@link HeldText} held, in order, onto the main target.
+	 * <p>
+	 * 26.2 let each draw open its own pass there. 26.3 wants the pass from the caller, so this opens
+	 * one on the main target and draws into it with the game's own call, which binds the default
+	 * uniforms itself. The depth goes on only where the pipeline tests it, which is the attachment
+	 * each held draw had when the game drew it: the level's pass carries the world's depth, and the
+	 * see-through phase ({@code LevelRenderer.executeSeeThrough}) opens its pass on colour alone. A
+	 * new pass is opened only where that answer changes from one draw to the next.
+	 */
+	static void drawHeld(List<HeldText.Held> held, Supplier<String> label) {
+		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+		GpuTextureView colour = main.getColorTextureView();
+		GpuTextureView depth = GraphicsApi.hasDepth(main) ? main.getDepthTextureView() : null;
+		CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
+
+		RenderPass pass = null;
+		boolean passDepth = false;
+		try {
+			for (HeldText.Held draw : held) {
+				boolean tested = depth != null
+						&& draw.prepared().pipeline().getDepthStencilState() != null;
+				if (pass == null || tested != passDepth) {
+					if (pass != null) {
+						pass.close();
+						pass = null;
+					}
+
+					pass = encoder.createRenderPass(label, colour, Optional.empty(),
+							tested ? depth : null, OptionalDouble.empty());
+					passDepth = tested;
+				}
+
+				draw.pose();
+				draw.prepared().drawFromBuffer(draw.info(), pass);
+			}
+		} finally {
+			if (pass != null) {
+				pass.close();
+			}
 		}
 	}
 

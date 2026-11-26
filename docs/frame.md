@@ -318,6 +318,19 @@ entity door serves with the pack's own program, as Iris does, so the engine only
 window around the call, and the name reaches the pack's image the way the name of a player in the
 open does, with nothing cleared or composed for it.
 
+### Text a resource pack rewrote the shader of is held past the chain
+
+One family goes the other way on purpose. A resource pack that replaces the game's text shader is
+using glyphs to draw a HUD, a server's minimap for instance, and every road above would hand that
+HUD to the pack: through the seed at full opacity, through the layer when faded, and on 26.3 under
+the final for the see-through half. The composites would then light it, fog it and blend it with
+the frames before. So the engine holds those draws when the game reaches them inside the level, and
+draws them with the game's own pipeline once the chain's final has written the game's target, over
+the finished picture. The vertex ranges are still good at that point, because the game's buffer
+pool lends nothing out twice before the frame ends. What it costs is that signs and name plates
+drawn through such a resource pack also go over the finished picture without the pack's light or
+fog, depth tested against the whole world including the water.
+
 ### The hand is the one family the engine has to move rather than intercept
 
 The player's own hand is drawn *after* the level returns, which is after the chain has run: the game

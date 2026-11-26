@@ -797,6 +797,11 @@ public final class EntityDraw extends FamilyDraw {
 	 * among the solid features ({@code SubmitNodeCollection.canRenderAsSolid}), where no text row is
 	 * served, so the same HUD at full opacity was already the game's.
 	 * <p>
+	 * <strong>The game's, and not at the game's moment.</strong> Drawn where the game draws it, the
+	 * HUD reaches the pack's image through the seed or the feature layer and comes out lit, fogged
+	 * and smeared by the composites; {@link HeldText} holds it instead and draws it over the finished
+	 * picture.
+	 * <p>
 	 * Read again at the head of every level frame by {@link #readTextOverrides}, because a resource
 	 * pack can be turned on or off without the shader pack being read again.
 	 */
@@ -1966,11 +1971,15 @@ public final class EntityDraw extends FamilyDraw {
 
 		GpuDevice device = RenderSystem.tryGetDevice();
 		Element element = element(prepared.pipeline());
-		// Text whose shader a resource pack replaces stays the game's, see textOverrides.
+		// Text whose shader a resource pack replaces stays the game's, see textOverrides. Inside the
+		// level's two feature windows it is held and drawn over the finished picture rather than
+		// drawn here under the chain (HeldText); anywhere else the game's own moment is already
+		// after the chain, or, inside the light's walk, there is no picture to hold it for.
 		if (element != null && element.text() && textOverrides.contains(prepared.pipeline())) {
 			draw.end();
 
-			return false;
+			return !shadowFeatures && (opaqueFeatures || translucentFeatures)
+					&& HeldText.hold(prepared, info);
 		}
 		// Two families and two conditions, because they are served at different moments. The
 		// entities live inside the two windows the level's features are drawn in; the hand is

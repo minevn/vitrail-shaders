@@ -20,6 +20,11 @@ what the next one holds.
   screen. Faded text of that kind went to the shader pack, which drew it in the world instead, so
   the HUD showed for half a second while the pack compiled and then vanished. Text whose shader a
   resource pack replaces is now left to the game, as it already was at full opacity.
+- **That HUD is no longer lit or blurred by the shader pack.** Left to the game, it still went into
+  the picture the shader pack lights and finishes, so a minimap came out dim, tinted by the light
+  around you and smeared as you turned, and on 26.3 part of it was hidden. It is now drawn over the
+  finished picture, sharp and in its own colours. Signs and name plates drawn through such a
+  resource pack are drawn the same way, without the shader pack's light or fog on them.
 
 ## 0.13.0-beta
 
